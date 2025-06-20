@@ -45,10 +45,6 @@ function scrollPageQuickly() {
 
 
 
-
-
-// ...existing code...
-
 // popup exit start
 // ── EXIT-INTENT FEEDBACK POPUP ────────────────────────────────────
 function setupExitIntentPopup() {
@@ -599,15 +595,16 @@ function setupExitIntentPopup() {
 
 // pop up exit end
 
-// ...existing code...
+
 
 
 
 
 
 document.addEventListener("DOMContentLoaded", () => {
+    setupExitIntentPopup(); // Initialize the exit intent popup functionality
     setupLanguageChangeDetection();
-     setupExitIntentPopup(); // Initialize the exit intent popup functionality
+     
     const credentials = document.querySelectorAll(".credential li");
     const careers = document.querySelectorAll(".career li");
     let lastClickedElement = null; // Track the last clicked element
