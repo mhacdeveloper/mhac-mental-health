@@ -48,11 +48,17 @@ function scrollPageQuickly() {
 // popup exit start
 // ── EXIT-INTENT FEEDBACK POPUP ────────────────────────────────────
 function setupExitIntentPopup() {
+  // Prevent multiple initializations
+  if (window.exitIntentInitialized) {
+    console.log('🚫 Exit intent already initialized');
+    return;
+  }
+  window.exitIntentInitialized = true;
+  
   let isPopupDisplayed = false;
   let isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
   let pageStartTime = Date.now();
   let scrollAttempts = 0;
-  let backButtonPressed = false;
 
   // Build and show the popup
   function createFeedbackPopup() {
@@ -305,11 +311,12 @@ function setupExitIntentPopup() {
         if (style && style.parentNode) style.parentNode.removeChild(style);
       }, 300);
       isPopupDisplayed = false;
-    }
-
-    // Enhanced handlers with emoji feedback
+    }    // Enhanced handlers with emoji feedback
     const buttonHandlers = {
       "give-feedback": () => {
+        // Store interaction to prevent future popups
+        localStorage.setItem('feedback-popup-interacted', 'true');
+        
         const btn = overlay.querySelector("#btn-give-feedback");
         const message = overlay.querySelector("p");
         const title = overlay.querySelector("h3");
@@ -336,8 +343,10 @@ function setupExitIntentPopup() {
           closePopup();
         }, 1200);
       },
-      
-      "no-feedback": () => {
+        "no-feedback": () => {
+        // Store interaction to prevent future popups
+        localStorage.setItem('feedback-popup-interacted', 'true');
+        
         const btn = overlay.querySelector("#btn-no-feedback");
         const message = overlay.querySelector("p");
         const title = overlay.querySelector("h3");
@@ -365,8 +374,10 @@ function setupExitIntentPopup() {
           closePopup();
         }, 2000);
       },
-      
-      "already-feedback": () => {
+        "already-feedback": () => {
+        // Store interaction to prevent future popups
+        localStorage.setItem('feedback-popup-interacted', 'true');
+        
         const btn = overlay.querySelector("#btn-already-feedback");
         const message = overlay.querySelector("p");
         const title = overlay.querySelector("h3");
@@ -394,8 +405,10 @@ function setupExitIntentPopup() {
           closePopup();
         }, 2000);
       },
-      
-      "cancel-feedback": () => {
+        "cancel-feedback": () => {
+        // Store interaction to prevent future popups
+        localStorage.setItem('feedback-popup-interacted', 'true');
+        
         const btn = overlay.querySelector("#btn-cancel-feedback");
         btn.innerHTML = "👋 Bye for now!";
         btn.style.background = "linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)";
@@ -445,89 +458,116 @@ function setupExitIntentPopup() {
     };
     document.addEventListener("keydown", escapeHandler);
   }
-
   // Mobile-specific exit intent detection
   function setupMobileExitIntent() {
     console.log('🔥 Mobile exit intent detection started');
-
-    // 1. Back button detection (most reliable for mobile)
-    let historyLength = history.length;
     
-    // Add a dummy state to detect back button
-    history.pushState(null, null, window.location.href);
+    // Minimum time requirements (much longer)
+    const MIN_TIME_ON_PAGE = 30000; // 30 seconds minimum
+    const MIN_ENGAGEMENT_TIME = 45000; // 45 seconds for engagement-based triggers
     
-    window.addEventListener('popstate', () => {
-      console.log('📱 Back button detected!');
-      if (!backButtonPressed && !isPopupDisplayed) {
-        backButtonPressed = true;
-        const timeOnPage = Date.now() - pageStartTime;
-        console.log(`⏱️ Time on page: ${timeOnPage}ms`);
-        
-        if (timeOnPage > 5000) { // 5 seconds minimum
-          // Push state again to prevent actual navigation
-          history.pushState(null, null, window.location.href);
-          isPopupDisplayed = true;
-          console.log('🎯 Showing popup due to back button');
-          createFeedbackPopup();
-          return;
-        }
-      }
-      // Allow navigation if popup already shown or time too short
-      history.go(-1);
-    });
-
-    // 2. Scroll to top detection
-    let lastScrollY = window.scrollY;
     let scrollToTopCount = 0;
+    let lastScrollY = window.scrollY;
+    let scrollTimeout = null;
+    let visibilityTimeout = null;
+    let topTouchCount = 0;
+    let lastTopTouch = 0;
+
+    // 1. Back button detection (much more conservative)
+    let backButtonAttempts = 0;
     
-    window.addEventListener('scroll', () => {
-      const currentScrollY = window.scrollY;
+    // Only add popstate listener once
+    if (!window.exitIntentPopstateAdded) {
+      window.exitIntentPopstateAdded = true;
       
-      // Detect rapid scroll to top
-      if (currentScrollY === 0 && lastScrollY > 100) {
-        scrollToTopCount++;
-        console.log(`📜 Scroll to top #${scrollToTopCount}`);
+      // Add a dummy state to detect back button
+      history.pushState({ exitIntent: true }, null, window.location.href);
+      
+      window.addEventListener('popstate', (e) => {
+        console.log('📱 Back button detected!');
+        const timeOnPage = Date.now() - pageStartTime;
         
-        if (scrollToTopCount >= 3 && !isPopupDisplayed) {
-          const timeOnPage = Date.now() - pageStartTime;
-          if (timeOnPage > 10000) { // 10 seconds minimum
+        if (!isPopupDisplayed && timeOnPage > MIN_TIME_ON_PAGE) {
+          backButtonAttempts++;
+          console.log(`⏱️ Back button attempt #${backButtonAttempts}, time on page: ${timeOnPage}ms`);
+          
+          // Only show popup on second back button attempt
+          if (backButtonAttempts >= 2) {
+            // Push state again to prevent actual navigation
+            history.pushState({ exitIntent: true }, null, window.location.href);
             isPopupDisplayed = true;
-            console.log('🎯 Showing popup due to scroll to top');
+            console.log('🎯 Showing popup due to back button (2nd attempt)');
+            createFeedbackPopup();
+            return;
+          } else {
+            // First attempt - just push state back
+            history.pushState({ exitIntent: true }, null, window.location.href);
+            console.log('⚠️ First back button - not showing popup yet');
+          }
+        } else if (timeOnPage <= MIN_TIME_ON_PAGE) {
+          // Let them leave if they haven't been here long enough
+          console.log('👋 Letting user leave - not enough time on page');
+          // Don't prevent navigation
+        }
+      });
+    }
+
+    // 2. Scroll to top detection (heavily debounced)
+    const handleScroll = () => {
+      if (scrollTimeout) clearTimeout(scrollTimeout);
+      
+      scrollTimeout = setTimeout(() => {
+        const currentScrollY = window.scrollY;
+        
+        // Much more restrictive scroll detection
+        if (lastScrollY > 300 && currentScrollY < 20) {
+          scrollToTopCount++;
+          console.log(`📜 Significant scroll to top #${scrollToTopCount}`);
+          
+          const timeOnPage = Date.now() - pageStartTime;
+          if (scrollToTopCount >= 4 && !isPopupDisplayed && timeOnPage > MIN_ENGAGEMENT_TIME) {
+            isPopupDisplayed = true;
+            console.log('🎯 Showing popup due to multiple scroll to tops');
             createFeedbackPopup();
           }
         }
-      }
-      
-      lastScrollY = currentScrollY;
-      scrollAttempts++;
-    });
+        
+        lastScrollY = currentScrollY;
+        scrollAttempts++;
+      }, 500); // 500ms debounce
+    };
+    
+    window.addEventListener('scroll', handleScroll, { passive: true });
 
-    // 3. Page visibility change (tab switching)
+    // 3. Page visibility change (much more conservative)
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') {
         console.log('👁️ Page hidden (tab switch/minimize)');
+        const timeOnPage = Date.now() - pageStartTime;
         
-        // Set a flag and check when they return
-        setTimeout(() => {
-          if (document.visibilityState === 'visible' && !isPopupDisplayed) {
-            const timeOnPage = Date.now() - pageStartTime;
-            console.log(`👁️ Page visible again after ${timeOnPage}ms`);
-            
-            if (timeOnPage > 15000) { // 15 seconds minimum
+        if (timeOnPage > MIN_ENGAGEMENT_TIME && !isPopupDisplayed) {
+          // Wait longer before showing popup
+          visibilityTimeout = setTimeout(() => {
+            if (document.visibilityState === 'hidden' && !isPopupDisplayed) {
               isPopupDisplayed = true;
-              console.log('🎯 Showing popup due to page visibility change');
+              console.log('🎯 Showing popup due to extended page hide');
               createFeedbackPopup();
             }
-          }
-        }, 1000);
+          }, 8000); // Wait 8 seconds
+        }
+      } else if (document.visibilityState === 'visible' && visibilityTimeout) {
+        // User came back, cancel the popup
+        clearTimeout(visibilityTimeout);
+        visibilityTimeout = null;
+        console.log('👁️ User returned, cancelling popup');
       }
     });
 
-    // 4. Time-based trigger (fallback)
+    // 4. Time-based trigger (much longer delay)
     setTimeout(() => {
       if (!isPopupDisplayed) {
-        const userEngaged = scrollAttempts > 5 || 
-                          document.querySelectorAll('.clicked, .selected').length > 0;
+        const userEngaged = scrollAttempts > 10 || 
+                          document.querySelectorAll('.clicked, .selected').length > 2;
         
         console.log(`⏰ Time-based check: engaged=${userEngaged}, scrolls=${scrollAttempts}`);
         
@@ -537,22 +577,30 @@ function setupExitIntentPopup() {
           createFeedbackPopup();
         }
       }
-    }, 60000); // 1 minute
+    }, 120000); // 2 minutes
 
-    // 5. Touch end near top edge (mobile specific)
+    // 5. Touch end near top edge (extremely conservative)
     document.addEventListener('touchend', (e) => {
       const touch = e.changedTouches[0];
-      if (touch && touch.clientY < 50) {
-        console.log('👆 Touch near top edge detected');
-        
-        const timeOnPage = Date.now() - pageStartTime;
-        if (timeOnPage > 8000 && !isPopupDisplayed) {
-          isPopupDisplayed = true;
-          console.log('🎯 Showing popup due to top edge touch');
-          createFeedbackPopup();
+      const now = Date.now();
+      
+      // Only count touches at the very top edge
+      if (touch && touch.clientY < 15) {
+        if (now - lastTopTouch > 2000) { // At least 2 seconds between touches
+          topTouchCount++;
+          lastTopTouch = now;
+          console.log(`👆 Top edge touch #${topTouchCount}`);
+          
+          const timeOnPage = now - pageStartTime;
+          // Require many top touches and significant time
+          if (topTouchCount >= 5 && timeOnPage > MIN_ENGAGEMENT_TIME + 15000 && !isPopupDisplayed) {
+            isPopupDisplayed = true;
+            console.log('🎯 Showing popup due to multiple top edge touches');
+            createFeedbackPopup();
+          }
         }
       }
-    });
+    }, { passive: true });
   }
 
   // Desktop exit intent detection
@@ -577,9 +625,15 @@ function setupExitIntentPopup() {
       document.addEventListener("mouseout", onMouseOut);
     }, 2000);
   }
-
   // Initialize based on device type
   console.log(`📱 Device detection: ${isMobile ? 'Mobile' : 'Desktop'}`);
+  
+  // Check if user has already interacted with feedback popup
+  const hasInteractedWithFeedback = localStorage.getItem('feedback-popup-interacted');
+  if (hasInteractedWithFeedback) {
+    console.log('🚫 User has already interacted with feedback popup');
+    return;
+  }
   
   if (isMobile) {
     setupMobileExitIntent();
