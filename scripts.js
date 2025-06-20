@@ -54,25 +54,35 @@ function setupExitIntentPopup() {
     return;
   }
   window.exitIntentInitialized = true;
-  
-  let isPopupDisplayed = false;
+    let isPopupDisplayed = false;
   let isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
   let pageStartTime = Date.now();
   let scrollAttempts = 0;
-  // Build and show the popup
+  let isEmbedded = window.self !== window.top; // Add this here for global access// Build and show the popup
   function createFeedbackPopup() {
     // Check if user is actively interacting with the main app
     const hasActiveSelections = document.querySelectorAll('.clicked, .selected').length > 0;
     const hasOpenPopups = document.querySelectorAll('.popup').length > 0;
     
+    // Check for Squarespace-specific elements that indicate user activity
+    const squarespaceActivity = document.querySelectorAll('[class*="sqs-"], .sqs-block-content, .sqs-gallery').length > 0;
+    
     if (hasActiveSelections || hasOpenPopups) {
       console.log('🚫 User is actively using the app - delaying exit popup');
-      // Retry after 30 seconds
+      // Retry after 60 seconds for embedded contexts
+      const retryDelay = isEmbedded ? 60000 : 30000;
       setTimeout(() => {
         if (!isPopupDisplayed && !document.querySelectorAll('.clicked, .selected').length) {
           createFeedbackPopup();
         }
-      }, 30000);
+      }, retryDelay);
+      return;
+    }
+    
+    // Additional check: Don't show if user just started interacting
+    const recentInteraction = Date.now() - pageStartTime < (isEmbedded ? 300000 : 120000); // 5 min for embedded, 2 min for normal
+    if (recentInteraction) {
+      console.log('🚫 User recently started - not showing popup yet');
       return;
     }
     // overlay with blur effect
@@ -477,12 +487,12 @@ function setupExitIntentPopup() {
     // Check if we're in an embedded context (iframe)
     const isEmbedded = window.self !== window.top;
     if (isEmbedded) {
-      console.log('🖼️ Detected embedded context - using more conservative triggers');
+      console.log('🖼️ Detected embedded context - using VERY conservative triggers');
     }
     
-    // Minimum time requirements (much longer for embedded contexts)
-    const MIN_TIME_ON_PAGE = isEmbedded ? 60000 : 30000; // 1 minute if embedded, 30 seconds otherwise
-    const MIN_ENGAGEMENT_TIME = isEmbedded ? 90000 : 45000; // 1.5 minutes if embedded, 45 seconds otherwise
+    // Much more conservative minimum time requirements for embedded contexts
+    const MIN_TIME_ON_PAGE = isEmbedded ? 120000 : 60000; // 2 minutes if embedded, 1 minute otherwise
+    const MIN_ENGAGEMENT_TIME = isEmbedded ? 180000 : 90000; // 3 minutes if embedded, 1.5 minutes otherwise
     
     let scrollToTopCount = 0;
     let lastScrollY = window.scrollY;
@@ -508,13 +518,14 @@ function setupExitIntentPopup() {
         if (!isPopupDisplayed && timeOnPage > MIN_TIME_ON_PAGE) {
           backButtonAttempts++;
           console.log(`⏱️ Back button attempt #${backButtonAttempts}, time on page: ${timeOnPage}ms`);
+            // Only show popup on second back button attempt AND much more time for embedded
+          const requiredAttempts = isEmbedded ? 3 : 2; // 3 attempts for embedded
           
-          // Only show popup on second back button attempt
-          if (backButtonAttempts >= 2) {
+          if (backButtonAttempts >= requiredAttempts) {
             // Push state again to prevent actual navigation
             history.pushState({ exitIntent: true }, null, window.location.href);
             isPopupDisplayed = true;
-            console.log('🎯 Showing popup due to back button (2nd attempt)');
+            console.log(`🎯 Showing popup due to back button (${requiredAttempts}${isEmbedded ? 'rd' : 'nd'} attempt)`);
             createFeedbackPopup();
             return;
           } else {
@@ -528,21 +539,26 @@ function setupExitIntentPopup() {
           // Don't prevent navigation
         }
       });
-    }    // 2. Scroll to top detection (heavily debounced and more conservative)
+    }    // 2. Scroll to top detection (VERY heavily debounced and ultra-conservative for embedded)
     const handleScroll = () => {
       if (scrollTimeout) clearTimeout(scrollTimeout);
       
       scrollTimeout = setTimeout(() => {
         const currentScrollY = window.scrollY;
         
-        // Much more restrictive scroll detection - only count major scrolls from bottom to very top
-        if (lastScrollY > 500 && currentScrollY < 10) { // Increased threshold
+        // Ultra-restrictive scroll detection - only count MAJOR scrolls from bottom to very top
+        const minStartScroll = isEmbedded ? 800 : 500; // Higher threshold for embedded
+        const maxEndScroll = isEmbedded ? 5 : 10; // Lower threshold for embedded
+        
+        if (lastScrollY > minStartScroll && currentScrollY < maxEndScroll) {
           scrollToTopCount++;
-          console.log(`📜 Significant scroll to top #${scrollToTopCount}`);
+          console.log(`📜 Major scroll to top #${scrollToTopCount} (embedded: ${isEmbedded})`);
           
           const timeOnPage = Date.now() - pageStartTime;
-          // Require more scroll attempts and longer time
-          if (scrollToTopCount >= 6 && !isPopupDisplayed && timeOnPage > MIN_ENGAGEMENT_TIME + 20000) {
+          const requiredScrolls = isEmbedded ? 10 : 6; // More scrolls required for embedded
+          const additionalTime = isEmbedded ? 60000 : 20000; // More time required for embedded
+          
+          if (scrollToTopCount >= requiredScrolls && !isPopupDisplayed && timeOnPage > MIN_ENGAGEMENT_TIME + additionalTime) {
             isPopupDisplayed = true;
             console.log('🎯 Showing popup due to multiple scroll to tops');
             createFeedbackPopup();
@@ -551,26 +567,29 @@ function setupExitIntentPopup() {
         
         lastScrollY = currentScrollY;
         scrollAttempts++;
-      }, 1000); // Increased debounce to 1 second
+      }, isEmbedded ? 2000 : 1000); // Longer debounce for embedded
     };
     
-    window.addEventListener('scroll', handleScroll, { passive: true });
-
-    // 3. Page visibility change (much more conservative)
+    window.addEventListener('scroll', handleScroll, { passive: true });    // 3. Page visibility change (ULTRA conservative for embedded contexts)
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') {
         console.log('👁️ Page hidden (tab switch/minimize)');
         const timeOnPage = Date.now() - pageStartTime;
         
-        if (timeOnPage > MIN_ENGAGEMENT_TIME && !isPopupDisplayed) {
-          // Wait longer before showing popup
+        // Much more conservative requirements for embedded contexts
+        const minTimeRequired = isEmbedded ? MIN_ENGAGEMENT_TIME + 120000 : MIN_ENGAGEMENT_TIME; // Extra 2 minutes for embedded
+        
+        if (timeOnPage > minTimeRequired && !isPopupDisplayed) {
+          // Wait much longer before showing popup in embedded contexts
+          const waitTime = isEmbedded ? 15000 : 8000; // 15 seconds for embedded, 8 for normal
+          
           visibilityTimeout = setTimeout(() => {
             if (document.visibilityState === 'hidden' && !isPopupDisplayed) {
               isPopupDisplayed = true;
               console.log('🎯 Showing popup due to extended page hide');
               createFeedbackPopup();
             }
-          }, 8000); // Wait 8 seconds
+          }, waitTime);
         }
       } else if (document.visibilityState === 'visible' && visibilityTimeout) {
         // User came back, cancel the popup
@@ -578,15 +597,16 @@ function setupExitIntentPopup() {
         visibilityTimeout = null;
         console.log('👁️ User returned, cancelling popup');
       }
-    });    // 4. Time-based trigger (much longer delay, especially for embedded contexts)
-    const timeBasedDelay = isEmbedded ? 300000 : 180000; // 5 minutes if embedded, 3 minutes otherwise
+    });// 4. Time-based trigger (MUCH longer delay, especially for embedded contexts)
+    const timeBasedDelay = isEmbedded ? 600000 : 300000; // 10 minutes if embedded, 5 minutes otherwise
     setTimeout(() => {
       if (!isPopupDisplayed) {
-        const userEngaged = scrollAttempts > 20 || 
-                          document.querySelectorAll('.clicked, .selected').length > 3;
+        const userEngaged = scrollAttempts > 50 || 
+                          document.querySelectorAll('.clicked, .selected').length > 5;
         
         console.log(`⏰ Time-based check: engaged=${userEngaged}, scrolls=${scrollAttempts}`);
         
+        // Only show if user is VERY engaged
         if (userEngaged) {
           isPopupDisplayed = true;
           console.log('🎯 Showing popup due to time-based trigger');
