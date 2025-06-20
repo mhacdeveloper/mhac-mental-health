@@ -59,9 +59,22 @@ function setupExitIntentPopup() {
   let isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
   let pageStartTime = Date.now();
   let scrollAttempts = 0;
-
   // Build and show the popup
   function createFeedbackPopup() {
+    // Check if user is actively interacting with the main app
+    const hasActiveSelections = document.querySelectorAll('.clicked, .selected').length > 0;
+    const hasOpenPopups = document.querySelectorAll('.popup').length > 0;
+    
+    if (hasActiveSelections || hasOpenPopups) {
+      console.log('🚫 User is actively using the app - delaying exit popup');
+      // Retry after 30 seconds
+      setTimeout(() => {
+        if (!isPopupDisplayed && !document.querySelectorAll('.clicked, .selected').length) {
+          createFeedbackPopup();
+        }
+      }, 30000);
+      return;
+    }
     // overlay with blur effect
     const overlay = document.createElement("div");
     overlay.id = "exit-popup-overlay";
@@ -457,14 +470,19 @@ function setupExitIntentPopup() {
       }
     };
     document.addEventListener("keydown", escapeHandler);
-  }
-  // Mobile-specific exit intent detection
+  }  // Mobile-specific exit intent detection
   function setupMobileExitIntent() {
     console.log('🔥 Mobile exit intent detection started');
     
-    // Minimum time requirements (much longer)
-    const MIN_TIME_ON_PAGE = 30000; // 30 seconds minimum
-    const MIN_ENGAGEMENT_TIME = 45000; // 45 seconds for engagement-based triggers
+    // Check if we're in an embedded context (iframe)
+    const isEmbedded = window.self !== window.top;
+    if (isEmbedded) {
+      console.log('🖼️ Detected embedded context - using more conservative triggers');
+    }
+    
+    // Minimum time requirements (much longer for embedded contexts)
+    const MIN_TIME_ON_PAGE = isEmbedded ? 60000 : 30000; // 1 minute if embedded, 30 seconds otherwise
+    const MIN_ENGAGEMENT_TIME = isEmbedded ? 90000 : 45000; // 1.5 minutes if embedded, 45 seconds otherwise
     
     let scrollToTopCount = 0;
     let lastScrollY = window.scrollY;
@@ -510,22 +528,21 @@ function setupExitIntentPopup() {
           // Don't prevent navigation
         }
       });
-    }
-
-    // 2. Scroll to top detection (heavily debounced)
+    }    // 2. Scroll to top detection (heavily debounced and more conservative)
     const handleScroll = () => {
       if (scrollTimeout) clearTimeout(scrollTimeout);
       
       scrollTimeout = setTimeout(() => {
         const currentScrollY = window.scrollY;
         
-        // Much more restrictive scroll detection
-        if (lastScrollY > 300 && currentScrollY < 20) {
+        // Much more restrictive scroll detection - only count major scrolls from bottom to very top
+        if (lastScrollY > 500 && currentScrollY < 10) { // Increased threshold
           scrollToTopCount++;
           console.log(`📜 Significant scroll to top #${scrollToTopCount}`);
           
           const timeOnPage = Date.now() - pageStartTime;
-          if (scrollToTopCount >= 4 && !isPopupDisplayed && timeOnPage > MIN_ENGAGEMENT_TIME) {
+          // Require more scroll attempts and longer time
+          if (scrollToTopCount >= 6 && !isPopupDisplayed && timeOnPage > MIN_ENGAGEMENT_TIME + 20000) {
             isPopupDisplayed = true;
             console.log('🎯 Showing popup due to multiple scroll to tops');
             createFeedbackPopup();
@@ -534,7 +551,7 @@ function setupExitIntentPopup() {
         
         lastScrollY = currentScrollY;
         scrollAttempts++;
-      }, 500); // 500ms debounce
+      }, 1000); // Increased debounce to 1 second
     };
     
     window.addEventListener('scroll', handleScroll, { passive: true });
@@ -561,13 +578,12 @@ function setupExitIntentPopup() {
         visibilityTimeout = null;
         console.log('👁️ User returned, cancelling popup');
       }
-    });
-
-    // 4. Time-based trigger (much longer delay)
+    });    // 4. Time-based trigger (much longer delay, especially for embedded contexts)
+    const timeBasedDelay = isEmbedded ? 300000 : 180000; // 5 minutes if embedded, 3 minutes otherwise
     setTimeout(() => {
       if (!isPopupDisplayed) {
-        const userEngaged = scrollAttempts > 10 || 
-                          document.querySelectorAll('.clicked, .selected').length > 2;
+        const userEngaged = scrollAttempts > 20 || 
+                          document.querySelectorAll('.clicked, .selected').length > 3;
         
         console.log(`⏰ Time-based check: engaged=${userEngaged}, scrolls=${scrollAttempts}`);
         
@@ -577,23 +593,23 @@ function setupExitIntentPopup() {
           createFeedbackPopup();
         }
       }
-    }, 120000); // 2 minutes
-
-    // 5. Touch end near top edge (extremely conservative)
+    }, timeBasedDelay);// 5. Touch end near top edge (DISABLED - causing issues in embedded contexts)
+    // Commenting out this event listener as it was triggering on normal clicks in Squarespace
+    /*
     document.addEventListener('touchend', (e) => {
       const touch = e.changedTouches[0];
       const now = Date.now();
       
       // Only count touches at the very top edge
-      if (touch && touch.clientY < 15) {
-        if (now - lastTopTouch > 2000) { // At least 2 seconds between touches
+      if (touch && touch.clientY < 5) { // Made even more restrictive
+        if (now - lastTopTouch > 5000) { // Increased delay to 5 seconds
           topTouchCount++;
           lastTopTouch = now;
           console.log(`👆 Top edge touch #${topTouchCount}`);
           
           const timeOnPage = now - pageStartTime;
-          // Require many top touches and significant time
-          if (topTouchCount >= 5 && timeOnPage > MIN_ENGAGEMENT_TIME + 15000 && !isPopupDisplayed) {
+          // Require many more touches and much more time
+          if (topTouchCount >= 8 && timeOnPage > MIN_ENGAGEMENT_TIME + 30000 && !isPopupDisplayed) {
             isPopupDisplayed = true;
             console.log('🎯 Showing popup due to multiple top edge touches');
             createFeedbackPopup();
@@ -601,6 +617,7 @@ function setupExitIntentPopup() {
         }
       }
     }, { passive: true });
+    */
   }
 
   // Desktop exit intent detection
