@@ -585,10 +585,27 @@
         </div>
     </div>
     <script src="https://mhacdeveloper.github.io/mhac-mental-health/scripts.js" type="module"></script>
-   <script src="https://id-preview--7a250c3d-f9db-4237-a1b5-4b7c5194c910.lovable.app/embed-chatbot.js"></script>
-   
-   
 
+    <!-- AI Chatbot Widget -->
+<div id="ai-chatbot-widget"></div>
+<script>
+  (function() {
+    var iframe = document.createElement('iframe');
+    iframe.src = 'https://b7362874-0eff-4aad-be66-63315d362a0c.lovableproject.com/widget?chatbot=2ef2d50a-b91d-44a4-9fcd-bd27b749a971&color=%233B82F6&position=bottom-right&name=AI%20Assistant&welcome=Hi!%20How%20can%20I%20help%20you%20today%3F';
+    iframe.style.position = 'fixed';
+    iframe.style.bottom = '0';
+    iframe.style.right = '0';
+    iframe.style.width = '100%';
+    iframe.style.height = '100%';
+    iframe.style.border = 'none';
+    iframe.style.zIndex = '9999';
+    iframe.style.pointerEvents = 'none';
+    iframe.onload = function() {
+      iframe.style.pointerEvents = 'auto';
+    };
+    document.body.appendChild(iframe);
+  })();
+</script>
 
 
 <!--chat bot start-->
