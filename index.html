@@ -589,83 +589,12 @@
    
 
 
-<!--chat bot start-->
-<!-- AI Chatbot Widget - Single Script Embed -->
-<script>
-(function() {
-  // Configuration
-  var config = {
-    src: 'https://b7362874-0eff-4aad-be66-63315d362a0c.lovableproject.com/widget?chatbot=2ef2d50a-b91d-44a4-9fcd-bd27b749a971&color=%231798d9&position=bottom-right&name=AI%20Assistant%20100&welcome=Hi!%20How%20can%20I%20help%20you%20today%3F&width=420&height=600',
-    width: 420,
-    height: 600,
-    position: 'bottom-right',
-    zIndex: 9999
-  };
-  
-  // Create and configure iframe
-  function createWidget() {
-    var iframe = document.createElement('iframe');
-    iframe.src = config.src;
-    iframe.style.cssText = [
-      'position: fixed',
-      'border: none',
-      'border-radius: 12px',
-      'background: transparent',
-      'z-index: ' + config.zIndex,
-      'width: ' + config.width + 'px',
-      'height: ' + config.height + 'px',
-      config.position === 'bottom-left' ? 'left: 20px' : 'right: 20px',
-      'bottom: 20px',
-      'max-width: calc(100vw - 40px)',
-      'max-height: calc(100vh - 40px)',
-      'pointer-events: auto'
-    ].join('; ');
-    
-    // Responsive behavior
-    function handleResize() {
-      var vw = window.innerWidth;
-      var vh = window.innerHeight;
-      
-      if (vw < 480) {
-        iframe.style.width = Math.min(config.width, vw - 40) + 'px';
-        iframe.style.height = Math.min(config.height, vh - 100) + 'px';
-        iframe.style.left = '20px';
-        iframe.style.right = 'auto';
-      } else {
-        iframe.style.width = config.width + 'px';
-        iframe.style.height = config.height + 'px';
-        if (config.position === 'bottom-left') {
-          iframe.style.left = '20px';
-          iframe.style.right = 'auto';
-        } else {
-          iframe.style.right = '20px';
-          iframe.style.left = 'auto';
-        }
-      }
-    }
-    
-    // Apply responsive behavior
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    
-    // Add to page
-    document.body.appendChild(iframe);
-    
-    // Error handling
-    iframe.onerror = function() {
-      console.warn('AI Chatbot Widget failed to load. Please check your configuration.');
-    };
-  }
-  
-  // Initialize when DOM is ready
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', createWidget);
-  } else {
-    createWidget();
-  }
-})();
-</script>
-<!--chat bot end-->
+<!-- AI Chatbot Widget - Multi-Tenant START -->
+
+<!-- AI Chatbot Widget - Multi-Tenant -->
+<script src="https://7a250c3d-f9db-4237-a1b5-4b7c5194c910.lovableproject.com/embed-chatbot.js"></script>
+
+<!-- AI Chatbot Widget - Multi-Tenant END -->
 
 
 
