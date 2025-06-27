@@ -15,15 +15,15 @@
 export const popupContent = {
   "addiction-therapist": {
     content: `
-      <div class="popup-body">
-        <p>As an addiction therapist, you will help people who are struggling with drug or alcohol problems. You will listen, support, and teach them how to make healthy choices so they can feel better and live happier lives.</p>
-        <p>Be someone who helps others find a fresh start and hope for the future!</p>
-        <h5>Requirements</h5>
-        <p>Master degree (or higher) in a Behavioral Health field or Nursing, with appropriate licensure through the Nursing Board, Ohio CSWMFT Board, Ohio CDP Board, or Ohio Board of Psychology.</p>
-        <h5>Average Pay</h5>
-        <p>$51,552/yr</p>
-      </div>
-    `,
+    <div class="popup-body">
+      <p>As an addiction therapist, you will help people who are struggling with drug or alcohol problems. You will listen, support, and teach them how to make healthy choices so they can feel better and live happier lives.</p>
+      <p>Be someone who helps others find a fresh start and hope for the future!</p>
+      <h5>Requirements</h5>
+      <p>Master degree (or higher) in a Behavioral Health field or Nursing, with appropriate licensure through the Nursing Board, Ohio CSWMFT Board, Ohio CDP Board, or Ohio Board of Psychology.</p>
+      <h5>Average Pay</h5>
+      <p>$51,552/yr</p>
+    </div>
+  `,
     link: "https://www.buildbehavioralhealth.org/sud-treatment"
   },
 
@@ -75,13 +75,14 @@ export const popupContent = {
         <p>As a behavior analyst, you will help people improve their lives by understanding their behavior and teaching new skills. Your work will make a real difference for individuals and families, helping them reach their goals and live more independently.</p>
         <p>Make a positive impact and help others thrive every day!</p>
         <h5>Requirements</h5>
-        <p>Master degree in a behavioral health field; certification through the <a href="http://www.bacb.com">Behavior Analyst Certification Board</a>.</p>
+        <p>Master degree in a Behavioral Science Field; certification through the <a href="http://www.bacb.com">Behavior Analyst Certification Board</a>.</p>
         <h5>Average Pay</h5>
         <p>$84,684/yr</p>
       </div>
     `,
     link: "http://www.buildbehavioralhealth.org/behavioral-analysis"
   },
+
 
   "behavior-assistant": {
     content: `
@@ -110,7 +111,7 @@ export const popupContent = {
         <p>$53,864/yr</p>
       </div>
     `,
-    link: "#" // No Learn More page
+    link: "https://www.buildbehavioralhealth.org/direct-client-care" // No Learn More page
   },
 
   "care-manager-coordinator": {
@@ -169,13 +170,13 @@ export const popupContent = {
     link: "https://www.buildbehavioralhealth.org/care-coordination"
   },
 
-  "clinical-supervisor": {
+   "clinical-supervisor": {
     content: `
       <div class="popup-body">
         <p>Guide and mentor behavioral health clinicians by providing supervision, training, and support to ensure high-quality, ethical, and client-centered care.</p>
         <p>Shape the next generation of compassionate behavioral health providers!</p>
         <h5>Requirements</h5>
-        <p>Master degree (or higher) in a Behavioral Health Field or Nursing (with mental health credential) OR Doctorate of Medicine or Osteopathic Medicine; licensure required through the <a href="http://www.nursing.ohio.gov">Ohio Nursing Board</a>, <a href="http://www.cswmft.ohio.gov">Ohio CSWMFT Board</a>, <a href="http://www.cdp.ohio.gov">Ohio CDP Board</a>, <a href="http://www.psychology.ohio.gov">Ohio Board of Psychology</a>, or <a href="http://www.med.ohio.gov">Ohio Medical Board</a>.</p>
+        <p>Master degree (or higher) in a Behavioral Science Field or Nursing (with mental health credential) OR Doctorate of Medicine or Osteopathic Medicine; licensure required through the Ohio Nursing Board, Ohio CSWMFT Board, Ohio CDP Board, Ohio Board of Psychology, or Ohio Medical Board.</p>
         <h5>Average Pay</h5>
         <p>Not specified.</p>
       </div>
@@ -189,7 +190,7 @@ export const popupContent = {
         <p>Bring together agencies, organizations, and community partners to strengthen behavioral health systems, develop shared goals, and lead collaborative initiatives.</p>
         <p>If you love building connections to create big change, this role is for you!</p>
         <h5>Requirements</h5>
-        <p>Registered Nurse (RN) OR Bachelor Degree or higher AND credentialed as an <a href="http://www.cdp.ohio.gov">Ohio Certified Prevention Specialist (OCPS)</a>.</p>
+        <p>Registered Nurse (RN) or Bachelor Degree or higher.</p>
         <h5>Average Pay</h5>
         <p>$53,627/yr</p>
       </div>
@@ -236,7 +237,7 @@ export const popupContent = {
         <p>$42,799/yr</p>
       </div>
     `,
-    link: "#" // Not on the Learn More list
+    link: "https://www.buildbehavioralhealth.org/crisis" // Not on the Learn More list
   },
 
   "crisis-therapist": {
@@ -287,7 +288,7 @@ export const popupContent = {
         <p>Help people who are using drugs to stay safe by offering support without judgment and tools to protect their health.</p>
         <p>If you are compassionate, nonjudgmental, good at listening, and want to support people in making safer choices, no matter where they are in their journey, harm reduction may be the work for you!</p>
         <h5>Requirements</h5>
-        <p>H.S. diploma or GED AND training as a Certified Peer, CDCA, or an Associate in Behavioral Health or Nursing (or higher).</p>
+        <p>H.S. diploma or GED and training as a Certified Peer, CDCA, or an Associate in a Behavioral Science Field or Nursing (or higher).</p>
         <h5>Average Pay</h5>
         <p>$41,236/yr</p>
       </div>
@@ -630,6 +631,15 @@ export const popupContent = {
     `,
     link: "http://www.buildbehavioralhealth.org/research"
   },
+  "psychopharmacologist": {
+    content: `
+    <div class="popup-body">
+    Specialize in understanding how medications impact mental health, working with interdisciplinary teams to guide safe and effective psychiatric medication management.
+    Use science to support hope, healing, and lasting recovery!
+    </div>
+    `,
+    link: "hhttp://www.buildbehavioralhealth.org/pharmacy"
+  },
 
   "research-assistant": {
     content: `
@@ -645,13 +655,13 @@ export const popupContent = {
     link: "http://www.buildbehavioralhealth.org/research"
   },
 
-  "researcher": {
+   "researcher": {
     content: `
       <div class="popup-body">
         <p>Conduct groundbreaking studies that explore mental health trends, treatment approaches, and recovery outcomes to strengthen the field of behavioral health.</p>
         <p>Fuel innovation and change through evidence-based discoveries!</p>
         <h5>Requirements</h5>
-        <p>Master degree (or higher) in a behavioral health field.</p>
+        <p>Master degree (or higher) in a Behavioral Science Field.</p>
         <h5>Average Pay</h5>
         <p>$73,858/yr</p>
       </div>
@@ -705,15 +715,16 @@ export const popupContent = {
     content: `
       <div class="popup-body">
         <p>Work directly with clients to develop individualized recovery plans, facilitate group and individual therapy, provide education on relapse prevention, and support long-term sobriety goals.</p>
-        <p>Make a lasting impact by guiding individuals through one of life’s toughest journeys!</p>
+        <p>Make a lasting impact by guiding individuals through one of life's toughest journeys!</p>
         <h5>Requirements</h5>
-        <p>H.S. diploma or GED AND Associate degree or higher in Behavioral Health or Nursing; experience and training in chemical dependency; credentialed by the <a href="http://www.cdpb.ohio.gov">Ohio Chemical Dependency Professionals Board</a>.</p>
+        <p>H.S. diploma or GED and Associate degree or higher in a Behavioral Science Field or Nursing; experience and training in chemical dependency; credentialed by the <a href="http://www.cdpb.ohio.gov">Ohio Chemical Dependency Professionals Board</a>.</p>
         <h5>Average Pay</h5>
         <p>$50,580/yr</p>
       </div>
     `,
     link: "https://www.buildbehavioralhealth.org/sud-treatment"
   },
+
 
   "substance-abuse-counselor-aide": {
     content: `
@@ -796,17 +807,18 @@ export const popupContent = {
     `,
     link: "http://www.buildbehavioralhealth.org/advocacy"
   },
+
   "chief-clinical-officer": {
     content: `
-        <div class="popup-body">
-            <p>Oversee all clinical services within a behavioral health agency, ensuring high-quality, evidence-based care, mentoring clinical staff, and guiding program development with a focus on best practices and innovation.</p>
-            <p>Lead a dynamic clinical team and transform lives through expert care and compassionate leadership!</p>
-            <h5>Requirements</h5>
-            <p>Master degree (or higher) in a Behavioral Health Field or Nursing OR Doctorate of Medicine or Osteopathic Medicine; licensure required through the Ohio Nursing Board, Ohio CSWMFT Board, Ohio CDP Board, Ohio Board of Psychology, or Ohio Medical Board.</p>
-            <h5>Average Pay</h5>
-            <p>$131,103/yr</p>
-        </div>
-    `,
+    <div class="popup-body">
+      <p>Oversee all clinical services within a behavioral health agency, ensuring high-quality, evidence-based care, mentoring clinical staff, and guiding program development with a focus on best practices and innovation.</p>
+      <p>Lead a dynamic clinical team and transform lives through expert care and compassionate leadership!</p>
+      <h5>Requirements</h5>
+      <p>Master degree (or higher) in a Behavioral Health Field or Nursing OR Doctorate of Medicine or Osteopathic Medicine; licensure required through the Ohio Nursing Board, Ohio CSWMFT Board, Ohio CDP Board, Ohio Board of Psychology, or Ohio Medical Board.</p>
+      <h5>Average Pay</h5>
+      <p>$131,103/yr</p>
+    </div>
+  `,
     link: "http://www.buildbehavioralhealth.org/clinical-supervision"
   },
 

@@ -54,11 +54,17 @@ function setupExitIntentPopup() {
     return;
   }
   window.exitIntentInitialized = true;
+  
+  // Check if user has already interacted with feedback popup
+  const hasInteractedWithFeedback = localStorage.getItem('feedback-popup-interacted');
+  if (hasInteractedWithFeedback) {
+    console.log('🚫 User has already interacted with feedback popup - will not show again');
+    return;
+  }
+  
   let isPopupDisplayed = false;
   let isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  let pageStartTime = Date.now();
-  let scrollAttempts = 0;
-  let isEmbedded = window.self !== window.top; // Add this here for global access
+  let isEmbedded = window.self !== window.top;
   
   // Track all user clicks to detect recent activity
   window.lastUserClick = 0;
@@ -69,40 +75,22 @@ function setupExitIntentPopup() {
   // Track touches on mobile to detect recent activity
   document.addEventListener('touchstart', () => {
     window.lastUserClick = Date.now();
-  }, { passive: true });// Build and show the popup
+  }, { passive: true });
+
+  // Build and show the popup
   function createFeedbackPopup() {
-    // ULTIMATE SAFEGUARD: Check if user is actively interacting with the main app
+    // ONLY check if popup is already displayed or user has active selections
     const hasActiveSelections = document.querySelectorAll('.clicked, .selected').length > 0;
     const hasOpenPopups = document.querySelectorAll('.popup').length > 0;
     
-    // Check for Squarespace-specific elements that indicate user activity
-    const squarespaceActivity = document.querySelectorAll('[class*="sqs-"], .sqs-block-content, .sqs-gallery').length > 0;
+    // Check if user has recently clicked anything (within last 3 seconds - much shorter window)
+    const recentClick = window.lastUserClick && (Date.now() - window.lastUserClick < 3000);
     
-    // Check if user has recently clicked anything (within last 10 seconds)
-    const recentClick = window.lastUserClick && (Date.now() - window.lastUserClick < 10000);
-    
-    if (hasActiveSelections || hasOpenPopups || recentClick) {
-      console.log('🚫 User is actively using the app - CANCELLING exit popup');
-      return; // Don't retry, just cancel completely
-    }
-    
-    // Additional check: Don't show if user just started interacting or if embedded
-    const recentInteraction = Date.now() - pageStartTime < (isEmbedded ? 900000 : 300000); // 15 min for embedded, 5 min for normal
-    if (recentInteraction) {
-      console.log(`🚫 User recently started (${Math.round((Date.now() - pageStartTime) / 60000)} minutes ago) - not showing popup yet`);
+    if (isPopupDisplayed || hasActiveSelections || hasOpenPopups || recentClick) {
+      console.log('🚫 User is actively using the app or popup already shown - CANCELLING exit popup');
       return;
     }
-    
-    // For embedded contexts, add extra verification
-    if (isEmbedded) {
-      const veryLongTime = Date.now() - pageStartTime > 1200000; // 20 minutes
-      const highEngagement = scrollAttempts > 200 && document.querySelectorAll('.clicked, .selected').length > 15;
-      
-      if (!veryLongTime || !highEngagement) {
-        console.log('🚫 Embedded context: Not enough time or engagement for popup');
-        return;
-      }
-    }
+
     // overlay with blur effect
     const overlay = document.createElement("div");
     overlay.id = "exit-popup-overlay";
@@ -139,12 +127,13 @@ function setupExitIntentPopup() {
     });
 
     // header with gradient
-    const header = document.createElement("div");
+     const header = document.createElement("div");
     Object.assign(header.style, {
-      background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+      background: "linear-gradient(135deg, #f7974c 0%, #b2e59d 50%, #f7974c 100%)",
       padding: isMobile ? "25px 20px 15px" : "30px 30px 20px",
       color: "#fff",
-      position: "relative"
+      position: "relative",
+      textShadow: "0 1px 3px rgba(0, 0, 0, 0.3)"
     });
 
     // animated icon
@@ -160,9 +149,10 @@ function setupExitIntentPopup() {
     title.textContent = "Wait! Before you go...";
     Object.assign(title.style, {
       margin: "0 0 10px 0",
-      fontSize: isMobile ? "20px" : "24px",
-      fontWeight: "600",
-      color: "#fff"
+      fontSize: isMobile ? "22px" : "26px",
+      fontWeight: "700",
+      color: "#fff",
+      textShadow: "0 2px 4px rgba(0, 0, 0, 0.4)"
     });
 
     const subtitle = document.createElement("p");
@@ -170,10 +160,10 @@ function setupExitIntentPopup() {
     Object.assign(subtitle.style, {
       margin: "0",
       fontSize: isMobile ? "14px" : "16px",
-      opacity: "0.9",
-      color: "#fff"
+      opacity: "0.95",
+      color: "#fff",
+      textShadow: "0 1px 2px rgba(0, 0, 0, 0.3)"
     });
-
     header.appendChild(icon);
     header.appendChild(title);
     header.appendChild(subtitle);
@@ -217,45 +207,33 @@ function setupExitIntentPopup() {
       minHeight: "44px"
     };
 
-    const canUseCookies = navigator.cookieEnabled;
-
     // Primary button (Give Feedback)
-    if (canUseCookies) {
-      const feedbackBtn = document.createElement("button");
-      feedbackBtn.id = "btn-give-feedback";
-      feedbackBtn.innerHTML = "🎯 Give Feedback";
-      Object.assign(feedbackBtn.style, {
-        ...buttonBaseStyle,
-        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-        color: "#fff",
-        boxShadow: "0 4px 15px rgba(102, 126, 234, 0.4)"
-      });
-
-      buttonsContainer.appendChild(feedbackBtn);
-    }
-
-    // Secondary buttons
-    const secondaryButtons = [
-      { id: "btn-no-feedback", text: "❌ No thanks", emoji: "❌" },
-      { id: "btn-already-feedback", text: "✅ Already gave feedback", emoji: "✅" },
-      { id: "btn-cancel-feedback", text: "↩️ Cancel", emoji: "↩️" }
-    ];
-
-    secondaryButtons.forEach(btnInfo => {
-      const btn = document.createElement("button");
-      btn.id = btnInfo.id;
-      btn.textContent = btnInfo.text;
-      Object.assign(btn.style, {
-        ...buttonBaseStyle,
-        background: "#f8f9fa",
-        color: "#6c757d",
-        border: "2px solid #e9ecef",
-        fontSize: isMobile ? "13px" : "14px",
-        padding: isMobile ? "10px 16px" : "12px 20px"
-      });
-
-      buttonsContainer.appendChild(btn);
+    const feedbackBtn = document.createElement("button");
+    feedbackBtn.id = "btn-give-feedback";
+    feedbackBtn.innerHTML = "🎯 Give Feedback";
+    Object.assign(feedbackBtn.style, {
+      ...buttonBaseStyle,
+      background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+      color: "#fff",
+      boxShadow: "0 4px 15px rgba(102, 126, 234, 0.4)"
     });
+
+    buttonsContainer.appendChild(feedbackBtn);
+
+    // Secondary button - "No thanks"
+    const noThanksBtn = document.createElement("button");
+    noThanksBtn.id = "btn-no-feedback";
+    noThanksBtn.textContent = "❌ No thanks";
+    Object.assign(noThanksBtn.style, {
+      ...buttonBaseStyle,
+      background: "#f8f9fa",
+      color: "#6c757d",
+      border: "2px solid #e9ecef",
+      fontSize: isMobile ? "13px" : "14px",
+      padding: isMobile ? "10px 16px" : "12px 20px"
+    });
+
+    buttonsContainer.appendChild(noThanksBtn);
 
     // close button (X)
     const closeBtn = document.createElement("button");
@@ -285,7 +263,7 @@ function setupExitIntentPopup() {
       bottom: "0",
       left: "0",
       height: "4px",
-      background: "linear-gradient(90deg, #667eea, #764ba2)",
+      background: "linear-gradient(90deg, #f7974c, #b2e59d, #f7974c)",
       width: "0%",
       transition: "width 0.3s ease"
     });
@@ -352,45 +330,45 @@ function setupExitIntentPopup() {
         if (style && style.parentNode) style.parentNode.removeChild(style);
       }, 300);
       isPopupDisplayed = false;
-    }    // Enhanced handlers with emoji feedback
+    }
+
+    // Button handlers
     const buttonHandlers = {
       "give-feedback": () => {
         // Store interaction to prevent future popups
         localStorage.setItem('feedback-popup-interacted', 'true');
         
         const btn = overlay.querySelector("#btn-give-feedback");
-        const message = overlay.querySelector("p");
-        const title = overlay.querySelector("h3");
+        const messageEl = overlay.querySelector("p");
+        const titleEl = overlay.querySelector("h3");
         
         btn.innerHTML = "🎉 Opening feedback form...";
         btn.style.background = "linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%)";
         btn.style.transform = "scale(1.05)";
         btn.disabled = true;
         
-        title.innerHTML = "🚀 Thank you!";
-        message.innerHTML = "We're opening the feedback form in a new tab. Your input means the world to us!";
-        message.style.color = "#28a745";
+        titleEl.innerHTML = "🚀 Thank you!";
+        messageEl.innerHTML = "We're opening the feedback form in a new tab. Your input means the world to us!";
+        messageEl.style.color = "#28a745";
         
-        ["no-feedback", "already-feedback", "cancel-feedback"].forEach(id => {
-          const otherBtn = overlay.querySelector(`#btn-${id}`);
-          if (otherBtn) {
-            otherBtn.style.opacity = "0.3";
-            otherBtn.disabled = true;
-          }
-        });
+        const otherBtn = overlay.querySelector("#btn-no-feedback");
+        if (otherBtn) {
+          otherBtn.style.opacity = "0.3";
+          otherBtn.disabled = true;
+        }
         
         setTimeout(() => {
-          window.open("https://your-feedback-form.example.com", "_blank");
+          window.open("https://www.buildbehavioralhealth.org/feedbackform", "_blank");
           closePopup();
         }, 1200);
       },
-        "no-feedback": () => {
+      "no-feedback": () => {
         // Store interaction to prevent future popups
         localStorage.setItem('feedback-popup-interacted', 'true');
         
         const btn = overlay.querySelector("#btn-no-feedback");
-        const message = overlay.querySelector("p");
-        const title = overlay.querySelector("h3");
+        const messageEl = overlay.querySelector("p");
+        const titleEl = overlay.querySelector("h3");
         
         btn.innerHTML = "😔 That's okay";
         btn.style.background = "linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)";
@@ -398,67 +376,20 @@ function setupExitIntentPopup() {
         btn.style.transform = "scale(1.05)";
         btn.disabled = true;
         
-        title.innerHTML = "😢 We understand";
-        message.innerHTML = "No problem at all! We're just happy you visited. Maybe next time? 💙";
-        message.style.color = "#6c757d";
-        message.style.fontSize = "15px";
+        titleEl.innerHTML = "😢 We understand";
+        messageEl.innerHTML = "No problem at all! We're just happy you visited. Maybe next time? 💙";
+        messageEl.style.color = "#6c757d";
+        messageEl.style.fontSize = "15px";
         
-        ["give-feedback", "already-feedback", "cancel-feedback"].forEach(id => {
-          const otherBtn = overlay.querySelector(`#btn-${id}`);
-          if (otherBtn) {
-            otherBtn.style.opacity = "0.3";
-            otherBtn.disabled = true;
-          }
-        });
+        const otherBtn = overlay.querySelector("#btn-give-feedback");
+        if (otherBtn) {
+          otherBtn.style.opacity = "0.3";
+          otherBtn.disabled = true;
+        }
         
         setTimeout(() => {
           closePopup();
         }, 2000);
-      },
-        "already-feedback": () => {
-        // Store interaction to prevent future popups
-        localStorage.setItem('feedback-popup-interacted', 'true');
-        
-        const btn = overlay.querySelector("#btn-already-feedback");
-        const message = overlay.querySelector("p");
-        const title = overlay.querySelector("h3");
-        
-        btn.innerHTML = "🌟 You're awesome!";
-        btn.style.background = "linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)";
-        btn.style.color = "#333";
-        btn.style.transform = "scale(1.05)";
-        btn.disabled = true;
-        
-        title.innerHTML = "🙏 Thank you so much!";
-        message.innerHTML = "Your feedback is invaluable! You're helping us improve every day. ✨";
-        message.style.color = "#28a745";
-        message.style.fontSize = "15px";
-        
-        ["give-feedback", "no-feedback", "cancel-feedback"].forEach(id => {
-          const otherBtn = overlay.querySelector(`#btn-${id}`);
-          if (otherBtn) {
-            otherBtn.style.opacity = "0.3";
-            otherBtn.disabled = true;
-          }
-        });
-        
-        setTimeout(() => {
-          closePopup();
-        }, 2000);
-      },
-        "cancel-feedback": () => {
-        // Store interaction to prevent future popups
-        localStorage.setItem('feedback-popup-interacted', 'true');
-        
-        const btn = overlay.querySelector("#btn-cancel-feedback");
-        btn.innerHTML = "👋 Bye for now!";
-        btn.style.background = "linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)";
-        btn.style.color = "#333";
-        btn.style.transform = "scale(1.05)";
-        
-        setTimeout(() => {
-          closePopup();
-        }, 600);
       }
     };
 
@@ -476,52 +407,65 @@ function setupExitIntentPopup() {
       }
     });
 
-    // Close button handler
-    closeBtn.addEventListener("click", closePopup);
+    // Close button handler - ALSO saves to localStorage
+    closeBtn.addEventListener("click", () => {
+      localStorage.setItem('feedback-popup-interacted', 'true');
+      closePopup();
+    });
     if (isMobile) {
       closeBtn.addEventListener("touchend", (e) => {
         e.preventDefault();
+        localStorage.setItem('feedback-popup-interacted', 'true');
         closePopup();
       });
     }
 
-    // Close on overlay click
+    // Close on overlay click - ALSO saves to localStorage
     overlay.addEventListener("click", (e) => {
-      if (e.target === overlay) closePopup();
+      if (e.target === overlay) {
+        localStorage.setItem('feedback-popup-interacted', 'true');
+        closePopup();
+      }
     });
 
-    // Escape key to close
+    // Escape key to close - ALSO saves to localStorage
     const escapeHandler = (e) => {
       if (e.key === "Escape") {
+        localStorage.setItem('feedback-popup-interacted', 'true');
         closePopup();
         document.removeEventListener("keydown", escapeHandler);
       }
     };
     document.addEventListener("keydown", escapeHandler);
-  }  // Mobile-specific exit intent detection
-  function setupMobileExitIntent() {
-    console.log('🔥 Mobile exit intent detection started - ULTRA CONSERVATIVE MODE');
     
-    // Check if we're in an embedded context (iframe)
-    const isEmbedded = window.self !== window.top;
-    if (isEmbedded) {
-      console.log('🖼️ Detected embedded context - DISABLING most triggers for Squarespace compatibility');
+    // Mark popup as displayed
+    isPopupDisplayed = true;
+  }
+
+  // Desktop exit intent detection - SIMPLIFIED
+  function setupDesktopExitIntent() {
+    console.log('🖥️ Desktop exit intent detection started - STANDARD MODE');
+    
+    function onMouseOut(e) {
+      if (e.clientY < 50 && !e.relatedTarget && !isPopupDisplayed) {
+        console.log('🖱️ Mouse exit detected - showing popup immediately');
+        createFeedbackPopup();
+        document.removeEventListener("mouseout", onMouseOut);
+      }
     }
+
+    // Start listening for mouse exit immediately
+    document.addEventListener("mouseout", onMouseOut);
+  }
+
+  // Mobile exit intent detection - SIMPLIFIED
+  function setupMobileExitIntent() {
+    console.log('📱 Mobile exit intent detection started - STANDARD MODE');
     
-    // ULTRA conservative minimum time requirements
-    const MIN_TIME_ON_PAGE = isEmbedded ? 300000 : 180000; // 5 minutes if embedded, 3 minutes otherwise
-    const MIN_ENGAGEMENT_TIME = isEmbedded ? 600000 : 300000; // 10 minutes if embedded, 5 minutes otherwise
-    
-    let scrollToTopCount = 0;
-    let lastScrollY = window.scrollY;
-    let scrollTimeout = null;
-    let visibilityTimeout = null;
-    let topTouchCount = 0;
-    let lastTopTouch = 0;    // 1. Back button detection (DISABLED for embedded contexts due to interference)
+    // Back button detection for ALL contexts (no embedded restrictions)
     let backButtonAttempts = 0;
     
-    // Only add popstate listener for non-embedded contexts
-    if (!window.exitIntentPopstateAdded && !isEmbedded) {
+    if (!window.exitIntentPopstateAdded) {
       window.exitIntentPopstateAdded = true;
       
       // Add a dummy state to detect back button
@@ -529,189 +473,48 @@ function setupExitIntentPopup() {
       
       window.addEventListener('popstate', (e) => {
         console.log('📱 Back button detected!');
-        const timeOnPage = Date.now() - pageStartTime;
         
-        if (!isPopupDisplayed && timeOnPage > MIN_TIME_ON_PAGE) {
+        if (!isPopupDisplayed) {
           backButtonAttempts++;
-          console.log(`⏱️ Back button attempt #${backButtonAttempts}, time on page: ${timeOnPage}ms`);
+          console.log(`⏱️ Back button attempt #${backButtonAttempts}`);
           
-          // Require many more attempts for non-embedded
-          if (backButtonAttempts >= 5) {
+          // Show popup on first back button attempt
+          if (backButtonAttempts >= 1) {
             // Push state again to prevent actual navigation
             history.pushState({ exitIntent: true }, null, window.location.href);
-            isPopupDisplayed = true;
-            console.log('🎯 Showing popup due to back button (5th attempt)');
+            console.log('🎯 Showing popup due to back button');
             createFeedbackPopup();
             return;
-          } else {
-            // Push state back
-            history.pushState({ exitIntent: true }, null, window.location.href);
-            console.log('⚠️ Back button - not showing popup yet');
           }
-        } else if (timeOnPage <= MIN_TIME_ON_PAGE) {
-          // Let them leave if they haven't been here long enough
-          console.log('👋 Letting user leave - not enough time on page');
-          // Don't prevent navigation
-        }      });
-    } else if (isEmbedded) {
-      console.log('🚫 Back button detection DISABLED for embedded context');
-    }    // 2. Scroll to top detection (DISABLED for embedded contexts)
-    if (!isEmbedded) {
-      console.log('📜 Scroll detection enabled for non-embedded context');
-      const handleScroll = () => {
-        if (scrollTimeout) clearTimeout(scrollTimeout);
-        
-        scrollTimeout = setTimeout(() => {
-          const currentScrollY = window.scrollY;
-          
-          // Very restrictive scroll detection for non-embedded only
-          if (lastScrollY > 800 && currentScrollY < 5) {
-            scrollToTopCount++;
-            console.log(`📜 Major scroll to top #${scrollToTopCount}`);
-            
-            const timeOnPage = Date.now() - pageStartTime;
-            
-            if (scrollToTopCount >= 8 && !isPopupDisplayed && timeOnPage > MIN_ENGAGEMENT_TIME + 60000) {
-              isPopupDisplayed = true;
-              console.log('🎯 Showing popup due to multiple scroll to tops');
-              createFeedbackPopup();
-            }
-          }
-          
-          lastScrollY = currentScrollY;
-          scrollAttempts++;
-        }, 2000); // 2 second debounce
-      };
-      
-      window.addEventListener('scroll', handleScroll, { passive: true });
-    } else {
-      console.log('🚫 Scroll detection DISABLED for embedded context');
-    }    // 3. Page visibility change (DISABLED for embedded contexts)
-    if (!isEmbedded) {
-      console.log('👁️ Visibility detection enabled for non-embedded context');
-      document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'hidden') {
-          console.log('👁️ Page hidden (tab switch/minimize)');
-          const timeOnPage = Date.now() - pageStartTime;
-          
-          if (timeOnPage > MIN_ENGAGEMENT_TIME + 180000 && !isPopupDisplayed) { // Extra 3 minutes
-            visibilityTimeout = setTimeout(() => {
-              if (document.visibilityState === 'hidden' && !isPopupDisplayed) {
-                isPopupDisplayed = true;
-                console.log('🎯 Showing popup due to extended page hide');
-                createFeedbackPopup();
-              }
-            }, 20000); // Wait 20 seconds
-          }
-        } else if (document.visibilityState === 'visible' && visibilityTimeout) {
-          clearTimeout(visibilityTimeout);
-          visibilityTimeout = null;
-          console.log('👁️ User returned, cancelling popup');
         }
       });
-    } else {
-      console.log('🚫 Visibility detection DISABLED for embedded context');
-    }    // 4. Time-based trigger (NEARLY DISABLED for embedded contexts)
-    if (!isEmbedded) {
-      console.log('⏰ Time-based trigger enabled for non-embedded context');
-      const timeBasedDelay = 900000; // 15 minutes for non-embedded
-      setTimeout(() => {
-        if (!isPopupDisplayed) {
-          const userEngaged = scrollAttempts > 100 || 
-                            document.querySelectorAll('.clicked, .selected').length > 10;
-          
-          console.log(`⏰ Time-based check: engaged=${userEngaged}, scrolls=${scrollAttempts}`);
-          
-          if (userEngaged) {
-            isPopupDisplayed = true;
-            console.log('🎯 Showing popup due to time-based trigger');
-            createFeedbackPopup();
-          }
-        }
-      }, timeBasedDelay);
-    } else {
-      console.log('🚫 Time-based trigger DISABLED for embedded context');
-    }// 5. Touch end near top edge (DISABLED - causing issues in embedded contexts)
-    // Commenting out this event listener as it was triggering on normal clicks in Squarespace
-    /*
-    document.addEventListener('touchend', (e) => {
-      const touch = e.changedTouches[0];
-      const now = Date.now();
-      
-      // Only count touches at the very top edge
-      if (touch && touch.clientY < 5) { // Made even more restrictive
-        if (now - lastTopTouch > 5000) { // Increased delay to 5 seconds
-          topTouchCount++;
-          lastTopTouch = now;
-          console.log(`👆 Top edge touch #${topTouchCount}`);
-          
-          const timeOnPage = now - pageStartTime;
-          // Require many more touches and much more time
-          if (topTouchCount >= 8 && timeOnPage > MIN_ENGAGEMENT_TIME + 30000 && !isPopupDisplayed) {
-            isPopupDisplayed = true;
-            console.log('🎯 Showing popup due to multiple top edge touches');
-            createFeedbackPopup();
-          }
-        }
-      }
-    }, { passive: true });
-    */
-  }
-
-  // Desktop exit intent detection
-  function setupDesktopExitIntent() {
-    console.log('🖥️ Desktop exit intent detection started');
-    
-    function onMouseOut(e) {
-      if (e.clientY < 50 && !e.relatedTarget && !isPopupDisplayed) {
-        const timeOnPage = Date.now() - pageStartTime;
-        console.log(`🖱️ Mouse exit detected after ${timeOnPage}ms`);
-        
-        if (timeOnPage > 8000) {
-          isPopupDisplayed = true;
-          console.log('🎯 Showing popup due to mouse exit');
-          createFeedbackPopup();
-          document.removeEventListener("mouseout", onMouseOut);
-        }
-      }
     }
 
-    setTimeout(() => {
-      document.addEventListener("mouseout", onMouseOut);
-    }, 2000);
+    // Page visibility change (tab switch/minimize)
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden' && !isPopupDisplayed) {
+        console.log('👁️ Page hidden (tab switch/minimize) - showing popup');
+        setTimeout(() => {
+          if (document.visibilityState === 'hidden' && !isPopupDisplayed) {
+            createFeedbackPopup();
+          }
+        }, 2000); // Wait 2 seconds to confirm they're leaving
+      }
+    });
   }
-  // Initialize based on device type  console.log(`📱 Device detection: ${isMobile ? 'Mobile' : 'Desktop'}`);
+
+  // Initialize based on device type
+  console.log(`📱 Device detection: ${isMobile ? 'Mobile' : 'Desktop'}`);
   console.log(`🖼️ Embedded context: ${isEmbedded ? 'YES (Squarespace/iframe)' : 'NO'}`);
-  
-  // Check if user has already interacted with feedback popup
-  const hasInteractedWithFeedback = localStorage.getItem('feedback-popup-interacted');
-  if (hasInteractedWithFeedback) {
-    console.log('🚫 User has already interacted with feedback popup');
-    return;
-  }
-  
-  // For embedded contexts (Squarespace), be EXTREMELY conservative
-  if (isEmbedded) {
-    console.log('🚫 EMBEDDED CONTEXT DETECTED - Exit intent popup NEARLY DISABLED for Squarespace compatibility');
-    console.log('🚫 Only the most conservative time-based trigger (after 15+ minutes) might activate');
-  }
+  console.log('✅ EXIT INTENT POPUP - STANDARD MODE: Shows on exit, saves to localStorage');
   
   if (isMobile) {
     setupMobileExitIntent();
   } else {
     setupDesktopExitIntent();
   }
-
-  // Track scroll attempts for engagement scoring (with throttling)
-  let scrollTrackingTimeout = null;
-  window.addEventListener('scroll', () => {
-    if (scrollTrackingTimeout) return;
-    scrollTrackingTimeout = setTimeout(() => {
-      scrollAttempts++;
-      scrollTrackingTimeout = null;
-    }, 500); // Throttle to prevent excessive counting
-  });
 }
+// ...existing code...
 
 // pop up exit end
 
@@ -1271,6 +1074,21 @@ if (fromCareer.id === "harm-reduction-specialist") {
                     "master-education"
                 ]
             },
+            "early-childhood-mental-health-consultant": {
+              bachelors: [
+                "bachelor-early-childhood",
+                "bachelor-science-nursing-bsn",
+                "bachelor-social-work-bsw"
+              ],
+              masters: [
+                "master-science-nursing-msn",
+                "master-social-work-msw",
+                "master-counseling",
+                "master-art-therapy",
+                "master-marriage-family-therapy",
+                "master-education"
+              ]
+            },
             "policy-advocate-analyst": {
                 bachelors: [
                     "bachelor-public-health",
@@ -1288,27 +1106,12 @@ if (fromCareer.id === "harm-reduction-specialist") {
                     "master-education"
                 ]
             },
-            "psychiatric-mental-health-nurse": {
-                bachelors: [
-                    "bachelor-science-nursing-bsn",
-                    "bsn-psychiatric-mental-health"
-                ],
-                masters: [
-                    "msn-psychiatric-mental-health"
-                ]
-            },
+            
 
             "care-manager-coordinator": {
                 bachelors: [
-                    "bachelor-early-childhood",
-                    "bachelor-education",
-                    "bachelor-art-therapy",
-                    "bachelor-behavioral-science",
-                    "bachelor-social-work-bsw",
-                    "bachelor-science-nursing-bsn",
-                    "bachelor-music-therapy",
-                    "bachelor-psychology",
-                    "bachelor-addiction-counseling"
+                    "bachelor-any-field",
+                    
                 ],
                 masters: [
                     "master-science-nursing-msn"
@@ -1557,6 +1360,45 @@ if (fromCareer.id === "harm-reduction-specialist") {
 
             return;  // skip the generic 3+ logic
         }
+        // ☆☆ SPECIAL CASE: Psychiatric/Mental Health Nurse ☆☆
+if (fromCareer.id === "psychiatric-mental-health-nurse") {
+    const hs = document.getElementById("high-school-diploma-ged");
+    const bsn = document.getElementById("bachelor-science-nursing-bsn");
+    const bsnPsych = document.getElementById("bsn-psychiatric-mental-health");
+    const msnPsych = document.getElementById("msn-psychiatric-mental-health");
+
+    // Pathway 1: HS → BSN with Psychiatric-Mental Health Nursing Certification → Psychiatric/Mental Health Nurse
+    {
+        const A = mid(hs, "bottom");
+        const B = mid(bsnPsych, "top");
+        makeLine(A.x, A.y, B.x, B.y);
+    }
+    {
+        const A = mid(bsnPsych, "right");
+        const B = mid(fromCareer, "left");
+        makeCurve(A.x, A.y, B.x, B.y);
+    }
+
+    // Pathway 2: HS → BSN → MSN with Psychiatric-Mental Health Nursing Certification → Psychiatric/Mental Health Nurse
+    {
+        const A = mid(hs, "bottom");
+        const B = mid(bsn, "top");
+        makeLine(A.x, A.y, B.x, B.y);
+    }
+    {
+        const A = mid(bsn, "bottom");
+        const B = mid(msnPsych, "top");
+        makeLine(A.x, A.y, B.x, B.y);
+    }
+    {
+        const A = mid(msnPsych, "right");
+        const B = mid(fromCareer, "left");
+        makeCurve(A.x, A.y, B.x, B.y);
+    }
+
+    return; // Skip the generic logic
+}
+
 
 
         // ── SPECIAL CASE for Therapist/Counselor ──
@@ -1964,6 +1806,17 @@ if (fromCareer.id === "harm-reduction-specialist") {
                 makeCurve(A.x, A.y, B.x, B.y);
             }
         }
+
+         if (fromCareer.id === "addiction-therapist") {
+            // grab the BSW element
+            const bswEl = document.getElementById("bachelor-social-work-bsw");
+            if (bswEl) {
+                const A = mid(bswEl, "right");
+                const B = mid(fromCareer, "left");
+                makeCurve(A.x, A.y, B.x, B.y);
+            }
+        }
+
 
 
     }
