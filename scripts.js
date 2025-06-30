@@ -1807,15 +1807,15 @@ if (fromCareer.id === "psychiatric-mental-health-nurse") {
             }
         }
 
-         if (fromCareer.id === "addiction-therapist") {
-            // grab the BSW element
-            const bswEl = document.getElementById("bachelor-social-work-bsw");
-            if (bswEl) {
-                const A = mid(bswEl, "right");
-                const B = mid(fromCareer, "left");
-                makeCurve(A.x, A.y, B.x, B.y);
-            }
-        }
+        //  if (fromCareer.id === "addiction-therapist") {
+        //     // grab the BSW element
+        //     const bswEl = document.getElementById("bachelor-social-work-bsw");
+        //     if (bswEl) {
+        //         const A = mid(bswEl, "right");
+        //         const B = mid(fromCareer, "left");
+        //         makeCurve(A.x, A.y, B.x, B.y);
+        //     }
+        // }
 
 
 
